@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إضافة صورة وجه</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">إضافة صورة وجه للمستخدم: {{ user.name }}</h3>
+                    </div>
+                    <div class="card-body">
+                        {% with messages = get_flashed_messages() %}
+                            {% if messages %}
+                                <div class="alert alert-info">
+                                    {% for message in messages %}
+                                        {{ message }}<br>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endwith %}
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">التقاط صورة من الكاميرا</div>
+                                    <div class="card-body">
+                                        <div class="camera-container mb-3">
+                                            <div id="camera-view">
+                                                <video id="video" width="100%" autoplay></video>
+                                            </div>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('auth.add_face', user_id=user.id) }}">
+                                            <div class="d-grid">
+                                                <button type="submit" name="capture" value="1" class="btn btn-primary" id="capture-btn">التقاط صورة</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">تحميل صورة من الجهاز</div>
+                                    <div class="card-body">
+                                        <form method="POST" action="{{ url_for('auth.add_face', user_id=user.id) }}" enctype="multipart/form-data">
+                                            <div class="mb-3">
+                                                <label for="file" class="form-label">اختر صورة</label>
+                                                <input type="file" class="form-control" id="file" name="file" accept="image/*">
+                                                <div class="form-text">يجب أن تحتوي الصورة على وجه واضح للمستخدم</div>
+                                            </div>
+                                            <div class="d-grid">
+                                                <button type="submit" class="btn btn-primary">تحميل الصورة</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">العودة للوحة التحكم</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // تهيئة الكاميرا عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            const video = document.getElementById('video');
+            
+            // الوصول إلى الكاميرا
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(stream) {
+                        video.srcObject = stream;
+                    })
+                    .catch(function(error) {
+                        console.error('خطأ في الوصول إلى الكاميرا:', error);
+                    });
+            }
+        });
+    </script>
+</body>
+</html>

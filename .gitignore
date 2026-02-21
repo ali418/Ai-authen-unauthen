@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+venv-py311/
+.venv*/
+
+# Environment and config secrets
+.env
+
+# Databases and local data
+*.db
+logs/
+uploads/
+
+# Large model and binary assets
+shape_predictor_68_face_landmarks.dat
+dll_files/
+dlib-whl-20.0.0-alpha/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,52 @@
+d:\Ai  authen unauthen 0.1\
+├── README.md                      # توثيق المشروع والتعليمات
+├── requirements.txt               # متطلبات المكتبات البايثونية
+├── config.py                      # ملف الإعدادات العامة للمشروع
+├── .env                           # ملف للمتغيرات البيئية (مثل كلمات المرور وبيانات الاتصال)
+│
+├── face_recognition/              # وحدة التعرف على الوجه
+│   ├── __init__.py
+│   ├── detector.py                # اكتشاف الوجوه في الصور
+│   ├── aligner.py                 # محاذاة الوجوه المكتشفة
+│   ├── embedder.py                # استخراج المتجهات المضمنة للوجوه
+│   ├── matcher.py                 # مقارنة المتجهات المضمنة
+│   └── camera.py                  # التعامل مع الكاميرا
+│
+├── backend/                       # الخادم المركزي/الباك إند
+│   ├── __init__.py
+│   ├── app.py                     # تطبيق Flask/Django الرئيسي
+│   ├── models.py                  # نماذج قاعدة البيانات
+│   ├── routes.py                  # مسارات API
+│   ├── auth.py                    # التحقق من الهوية والصلاحيات
+│   ├── database.py                # التعامل مع قاعدة البيانات
+│   └── notifications/             # وحدة التنبيهات
+│       ├── __init__.py
+│       ├── email_sender.py        # إرسال البريد الإلكتروني
+│       └── telegram_bot.py        # التفاعل مع بوت تليجرام
+│
+├── admin_dashboard/               # لوحة تحكم المسؤول
+│   ├── static/                    # الملفات الثابتة (CSS, JS, الصور)
+│   ├── templates/                 # قوالب HTML
+│   ├── __init__.py
+│   ├── views.py                   # عرض الصفحات
+│   └── forms.py                   # نماذج الإدخال
+│
+├── door_control/                  # وحدة التحكم في الأبواب
+│   ├── __init__.py
+│   ├── relay.py                   # التحكم في المرحل (Relay)
+│   └── gpio_handler.py            # التعامل مع منافذ GPIO
+│
+├── database/                      # ملفات قاعدة البيانات
+│   ├── migrations/                # ترحيلات قاعدة البيانات
+│   └── schema.sql                 # مخطط قاعدة البيانات
+│
+├── utils/                         # أدوات مساعدة
+│   ├── __init__.py
+│   ├── logger.py                  # تسجيل الأحداث
+│   └── helpers.py                 # دوال مساعدة
+│
+└── tests/                         # اختبارات
+    ├── __init__.py
+    ├── test_face_recognition.py
+    ├── test_backend.py
+    └── test_door_control.py

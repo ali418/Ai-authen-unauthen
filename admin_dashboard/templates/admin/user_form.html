@@ -1,0 +1,82 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}{{ title }}{% endblock %}
+
+{% block page_actions %}
+<a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-secondary">
+    <i class="fas fa-arrow-left me-1"></i> العودة للقائمة
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {# تم إزالة csrf_token لأننا لم نعد نستخدم flask_wtf #}
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">الاسم</label>
+                        <input type="text" name="name" id="name" value="{{ form.name }}" 
+                               class="form-control {{ 'is-invalid' if form.errors.get('name') }}">
+                        {% if form.errors.get('name') %}
+                            <div class="invalid-feedback">
+                                {{ form.errors.get('name') }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">البريد الإلكتروني</label>
+                        <input type="email" name="email" id="email" value="{{ form.email }}" 
+                               class="form-control {{ 'is-invalid' if form.errors.get('email') }}">
+                        {% if form.errors.get('email') %}
+                            <div class="invalid-feedback">
+                                {{ form.errors.get('email') }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="role" class="form-label">الدور</label>
+                        <select name="role" id="role" class="form-select {{ 'is-invalid' if form.errors.get('role') }}">
+                            <option value="user" {{ 'selected' if form.role == 'user' }}>مستخدم</option>
+                            <option value="admin" {{ 'selected' if form.role == 'admin' }}>مسؤول</option>
+                            <option value="security" {{ 'selected' if form.role == 'security' }}>أمن</option>
+                        </select>
+                        {% if form.errors.get('role') %}
+                            <div class="invalid-feedback">
+                                {{ form.errors.get('role') }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="password" class="form-label">كلمة المرور</label>
+                        <input type="password" name="password" id="password" 
+                               class="form-control {{ 'is-invalid' if form.errors.get('password') }}">
+                        <div class="form-text">اتركها فارغة إذا كنت لا تريد تغييرها</div>
+                        {% if form.errors.get('password') %}
+                            <div class="invalid-feedback">
+                                {{ form.errors.get('password') }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="is_active" id="is_active" class="form-check-input"
+                               {{ 'checked' if form.is_active }}>
+                        <label for="is_active" class="form-check-label">نشط</label>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">حفظ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

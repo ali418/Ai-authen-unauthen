@@ -1,0 +1,71 @@
+/* أنماط الطباعة للوحة التحكم */
+@media print {
+    /* إخفاء العناصر غير الضرورية عند الطباعة */
+    #sidebar,
+    .btn,
+    .page-actions,
+    .pagination,
+    .no-print {
+        display: none !important;
+    }
+    
+    /* تعديل هوامش الصفحة */
+    body {
+        margin: 0;
+        padding: 0;
+        background-color: #fff;
+    }
+    
+    /* تعديل عرض المحتوى */
+    main {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* تنسيق الجداول */
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table th,
+    .table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+    
+    /* إضافة رأس وتذييل للصفحة */
+    @page {
+        margin: 2cm;
+    }
+    
+    /* تنسيق العناوين */
+    h1 {
+        font-size: 18pt;
+        margin-bottom: 20px;
+    }
+    
+    h2, h3 {
+        font-size: 14pt;
+        margin-bottom: 10px;
+    }
+    
+    /* تنسيق الروابط */
+    a {
+        text-decoration: none;
+        color: #000;
+    }
+    
+    /* إظهار عناوين URL للروابط */
+    a[href]:after {
+        content: " (" attr(href) ")";
+        font-size: 80%;
+    }
+    
+    /* عدم إظهار عناوين URL للروابط الداخلية */
+    a[href^="#"]:after,
+    a[href^="javascript:"]:after {
+        content: "";
+    }
+}

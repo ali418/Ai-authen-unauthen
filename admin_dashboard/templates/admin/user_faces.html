@@ -1,0 +1,127 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}صور وجه {{ user.username }}{% endblock %}
+{% block page_title %}صور وجه {{ user.username }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{{ url_for('admin.add_face', user_id=user.id) }}" class="btn btn-sm btn-primary">
+        <i class="fas fa-plus me-1"></i> إضافة صورة جديدة
+    </a>
+    <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-secondary">
+        <i class="fas fa-arrow-left me-1"></i> العودة للمستخدمين
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">معلومات المستخدم</h5>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <div class="avatar-circle mx-auto mb-3">
+                        <span class="initials">{{ user.username[0] }}</span>
+                    </div>
+                </div>
+                <table class="table table-borderless">
+                    <tr>
+                        <th>الاسم:</th>
+                        <td>{{ user.username }}</td>
+                    </tr>
+                    <tr>
+                        <th>البريد الإلكتروني:</th>
+                        <td>{{ user.email }}</td>
+                    </tr>
+                    <tr>
+                        <th>الدور:</th>
+                        <td>
+                            <span class="badge bg-{{ 'primary' if user.is_admin else 'secondary' }}">
+                                {{ 'مسؤول' if user.is_admin else 'مستخدم' }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>الحالة:</th>
+                        <td>
+                            <span class="badge bg-{{ 'success' if user.is_active else 'danger' }}">
+                                {{ 'نشط' if user.is_active else 'غير نشط' }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>تاريخ الإنشاء:</th>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">صور الوجه المسجلة</h5>
+            </div>
+            <div class="card-body">
+                {% if user.face_images %}
+                <div class="row row-cols-1 row-cols-md-3 g-4">
+                    {% for face in user.face_images %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if face.image_data %}
+                            <img src="data:image/jpeg;base64,{{ face.image_data | b64encode }}" class="card-img-top" alt="صورة وجه">
+                            {% else %}
+                            <div class="card-img-top bg-light text-center py-5">
+                                <i class="fas fa-image fa-3x text-muted"></i>
+                            </div>
+                            {% endif %}
+                            <div class="card-body">
+                                <p class="card-text small text-muted">تم الإضافة: {{ face.created_at.strftime('%Y-%m-%d') }}</p>
+                                <form action="{{ url_for('admin.delete_face', user_id=user.id, face_id=face.id) }}" method="post" class="d-grid">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('هل أنت متأكد من حذف هذه الصورة؟')">
+                                        <i class="fas fa-trash me-1"></i> حذف
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                    <p class="mb-0">لا توجد صور وجه مسجلة لهذا المستخدم</p>
+                    <a href="{{ url_for('admin.add_face', user_id=user.id) }}" class="btn btn-primary mt-3">
+                        <i class="fas fa-plus me-1"></i> إضافة صورة جديدة
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .avatar-circle {
+        width: 100px;
+        height: 100px;
+        background-color: #007bff;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .initials {
+        font-size: 42px;
+        color: white;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}

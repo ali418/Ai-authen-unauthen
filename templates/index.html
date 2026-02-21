@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام التعرف على الوجه</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .hero-section {
+            padding: 100px 0;
+            text-align: center;
+        }
+        .features-section {
+            padding: 50px 0;
+            background-color: #fff;
+        }
+        .feature-card {
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            height: 100%;
+        }
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <!-- القائمة العلوية -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">نظام التعرف على الوجه</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">الرئيسية</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features">المميزات</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-light">تسجيل الدخول</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- القسم الرئيسي -->
+    <section class="hero-section">
+        <div class="container">
+            <h1>نظام التعرف على الوجه للتحكم في الوصول</h1>
+            <p class="lead mt-3">نظام آمن وموثوق للتحكم في الوصول باستخدام تقنية التعرف على الوجه</p>
+            <div class="mt-4">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">تسجيل الدخول</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- قسم المميزات -->
+    <section id="features" class="features-section">
+        <div class="container">
+            <h2 class="text-center mb-5">مميزات النظام</h2>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔒</div>
+                        <h4>أمان عالي</h4>
+                        <p>تحكم في الوصول باستخدام تقنية التعرف على الوجه المتقدمة</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">📊</div>
+                        <h4>لوحة تحكم متكاملة</h4>
+                        <p>إدارة المستخدمين ومراقبة سجلات الوصول بسهولة</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">🔔</div>
+                        <h4>تنبيهات فورية</h4>
+                        <p>تلقي إشعارات فورية عند محاولات الوصول غير المصرح بها</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- تذييل الصفحة -->
+    <footer class="bg-dark text-white py-4 mt-5">
+        <div class="container text-center">
+            <p>جميع الحقوق محفوظة &copy; 2023 - نظام التعرف على الوجه</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

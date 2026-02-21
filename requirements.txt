@@ -1,0 +1,43 @@
+# المكتبات الأساسية للمشروع
+opencv-python>=4.7.0.72
+numpy>=1.24.3
+tensorflow>=2.12.0
+
+# مكتبات الباك إند
+flask>=2.3.2
+sqlalchemy>=2.0.15
+psycopg2-binary>=2.9.6
+python-dotenv>=1.0.0
+flask-login>=0.6.2  # إضافة مكتبة flask-login المفقودة
+flask-wtf>=1.1.1  # إضافة مكتبة flask-wtf للنماذج
+
+# مكتبات التنبيهات
+python-telegram-bot>=20.3
+
+# مكتبات أخرى
+pillow>=9.5.0
+matplotlib>=3.7.1
+werkzeug>=2.3.6  # إضافة werkzeug لدعم تشفير كلمات المرور
+
+# تثبيت dlib و face-recognition بشكل منفصل
+# لتثبيت dlib على نظام Windows، يرجى اتباع الخطوات التالية:
+# 1. تثبيت Visual Studio 2022 مع خيار "Desktop development with C++"
+# 2. تثبيت CMake من https://cmake.org/download/
+# 3. استخدم ملف .whl المناسب لإصدار Python الخاص بك من المجلد:
+#    d:\Ai  authen unauthen 0.1\dlib-whl-20.0.0-alpha\dlib-whl-20.0.0-alpha\
+#
+#    الملفات المتاحة:
+#    - dlib-20.0.0-cp310-cp310-win_amd64.whl (لـ Python 3.10)
+#    - dlib-20.0.0-cp311-cp311-win_amd64.whl (لـ Python 3.11)
+#    - dlib-20.0.0-cp312-cp312-win_amd64.whl (لـ Python 3.12)
+#    - dlib-20.0.0-cp313-cp313-win_amd64.whl (لـ Python 3.13)
+#    - dlib-20.0.0-cp37-cp37m-win_amd64.whl (لـ Python 3.7)
+#    - dlib-20.0.0-cp38-cp38-win_amd64.whl (لـ Python 3.8)
+#    - dlib-20.0.0-cp39-cp39-win_amd64.whl (لـ Python 3.9)
+#
+# 4. تثبيت الملف باستخدام: pip install [اسم_الملف.whl]
+#    مثال: pip install dlib-20.0.0-cp313-cp313-win_amd64.whl (لـ Python 3.13)
+#
+# dlib==20.0.0  # يتم تثبيت dlib من ملف whl منفصل حسب الإرشادات
+# face-recognition==1.3.0
+# insightface==0.7.3

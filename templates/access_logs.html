@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجلات الوصول - نظام التعرف على الوجه</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .log-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        
+        .filter-form {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .access-granted {
+            color: #28a745;
+        }
+        
+        .access-denied {
+            color: #dc3545;
+        }
+        
+        .log-details {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- القائمة العلوية -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">نظام التعرف على الوجه</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">لوحة التحكم</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin.users') }}">إدارة المستخدمين</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('admin.access_logs') }}">سجلات الوصول</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.live_view') }}">عرض الكاميرا المباشر</a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-light">تسجيل الخروج</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- محتوى الصفحة -->
+    <div class="container mt-4">
+        <h1 class="mb-4">سجلات الوصول</h1>
+        
+        <!-- نموذج التصفية -->
+        <div class="filter-form">
+            <form method="GET" action="{{ url_for('admin.access_logs') }}">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="user" class="form-label">المستخدم</label>
+                            <select class="form-select" id="user" name="user_id">
+                                <option value="">الكل</option>
+                                <!-- هنا يتم إضافة خيارات المستخدمين ديناميكيًا -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="date_from" class="form-label">من تاريخ</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="date_to" class="form-label">إلى تاريخ</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="mb-3">
+                            <label for="access_status" class="form-label">حالة الوصول</label>
+                            <select class="form-select" id="access_status" name="access_status">
+                                <option value="">الكل</option>
+                                <option value="granted">مسموح</option>
+                                <option value="denied">مرفوض</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> تصفية
+                    </button>
+                    <a href="{{ url_for('admin.export_access_logs', user_id=request.args.get('user_id', ''), status=request.args.get('status', ''), start_date=request.args.get('start_date', ''), end_date=request.args.get('end_date', '')) }}" class="btn btn-success">
+                        <i class="fas fa-file-export"></i> تصدير إلى CSV
+                    </a>
+                </div>
+            </form>
+        </div>
+        
+        <!-- جدول السجلات -->
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>الصورة</th>
+                                <th>المستخدم</th>
+                                <th>التاريخ والوقت</th>
+                                <th>حالة الوصول</th>
+                                <th>درجة الثقة</th>
+                                <th>ملاحظات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if logs %}
+                                {% for log in logs %}
+                                <tr class="log-details" data-bs-toggle="modal" data-bs-target="#logModal{{ log.id }}">
+                                    <td>
+                                        {% if log.image_data %}
+                                        <img src="data:image/jpeg;base64,{{ log.image_data|b64encode }}" class="log-image" alt="صورة محاولة الوصول">
+                                        {% else %}
+                                        <div class="log-image bg-light d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-camera-slash text-muted"></i>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.user %}
+                                        {{ log.user.name }}
+                                        {% else %}
+                                        <span class="text-muted">غير معروف</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                    <td>
+                                        {% if log.access_granted %}
+                                        <span class="badge bg-success">مسموح</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">مرفوض</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.confidence %}
+                                        {{ "%.2f"|format(log.confidence * 100) }}%
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if log.notes %}
+                                        {{ log.notes }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                
+                                <!-- Modal for log details -->
+                                <div class="modal fade" id="logModal{{ log.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">تفاصيل محاولة الوصول</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        {% if log.image_data %}
+                                                        <img src="data:image/jpeg;base64,{{ log.image_data|b64encode }}" class="img-fluid rounded" alt="صورة محاولة الوصول">
+                                                        {% else %}
+                                                        <div class="bg-light d-flex align-items-center justify-content-center" style="height: 300px;">
+                                                            <i class="fas fa-camera-slash fa-3x text-muted"></i>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <h5>
+                                                            {% if log.access_granted %}
+                                                            <i class="fas fa-check-circle access-granted"></i> تم السماح بالوصول
+                                                            {% else %}
+                                                            <i class="fas fa-times-circle access-denied"></i> تم رفض الوصول
+                                                            {% endif %}
+                                                        </h5>
+                                                        <hr>
+                                                        <dl class="row">
+                                                            <dt class="col-sm-4">المستخدم:</dt>
+                                                            <dd class="col-sm-8">
+                                                                {% if log.user %}
+                                                                {{ log.user.name }}
+                                                                {% else %}
+                                                                <span class="text-muted">غير معروف</span>
+                                                                {% endif %}
+                                                            </dd>
+                                                            
+                                                            <dt class="col-sm-4">التاريخ والوقت:</dt>
+                                                            <dd class="col-sm-8">{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
+                                                            
+                                                            <dt class="col-sm-4">درجة الثقة:</dt>
+                                                            <dd class="col-sm-8">
+                                                                {% if log.confidence %}
+                                                                {{ "%.2f"|format(log.confidence * 100) }}%
+                                                                {% else %}
+                                                                <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </dd>
+                                                            
+                                                            <dt class="col-sm-4">ملاحظات:</dt>
+                                                            <dd class="col-sm-8">
+                                                                {% if log.notes %}
+                                                                {{ log.notes }}
+                                                                {% else %}
+                                                                <span class="text-muted">-</span>
+                                                                {% endif %}
+                                                            </dd>
+                                                        </dl>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <i class="fas fa-info-circle fa-2x mb-3 text-muted"></i>
+                                        <p>لا توجد سجلات وصول حتى الآن</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
