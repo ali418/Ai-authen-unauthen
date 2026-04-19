@@ -6,162 +6,251 @@
     <title>عرض الكاميرا المباشر - نظام التعرف على الوجه</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
-        .camera-container {
+        body { background: #0f172a; color: #e2e8f0; font-family: 'Segoe UI', sans-serif; }
+        .navbar { background: linear-gradient(135deg, #1e293b, #0f172a); border-bottom: 1px solid #334155; }
+        .camera-wrapper {
             position: relative;
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            border: 1px solid #ddd;
-            border-radius: 8px;
+            background: #000;
+            border-radius: 16px;
             overflow: hidden;
+            border: 2px solid #334155;
+            box-shadow: 0 0 40px rgba(99,102,241,0.2);
         }
-        
-        .camera-feed {
+        #webcam {
             width: 100%;
-            height: auto;
+            max-height: 480px;
+            object-fit: cover;
             display: block;
+            transform: scaleX(-1); /* mirror effect */
         }
-        
-        .camera-controls {
-            margin-top: 20px;
+        #canvas { display: none; }
+        .overlay-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+        }
+        .badge-live { background: rgba(239,68,68,0.85); animation: pulse-red 2s infinite; }
+        .badge-processing { background: rgba(234,179,8,0.85); }
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; } 50% { opacity: 0.6; }
+        }
+        .result-card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+        .result-card.authorized {
+            border-color: #22c55e;
+            box-shadow: 0 0 20px rgba(34,197,94,0.2);
+        }
+        .result-card.unauthorized {
+            border-color: #ef4444;
+            box-shadow: 0 0 20px rgba(239,68,68,0.2);
+        }
+        .result-icon { font-size: 3rem; margin-bottom: 10px; }
+        .confidence-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: #334155;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .confidence-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            transition: width 0.5s ease;
+        }
+        .stat-box {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 16px;
             text-align: center;
         }
-        
-        .status-indicator {
-            display: inline-block;
-            width: 15px;
-            height: 15px;
+        .stat-box .stat-num { font-size: 2rem; font-weight: 700; color: #6366f1; }
+        .stat-box .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+        .btn-scan {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none;
+            color: white;
+            padding: 12px 32px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-scan:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99,102,241,0.4); }
+        .btn-scan:disabled { opacity: 0.5; transform: none; cursor: not-allowed; }
+        .btn-toggle {
+            background: #334155;
+            border: none;
+            color: #94a3b8;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-toggle:hover { background: #475569; color: white; }
+        #no-camera {
+            display: none;
+            background: #0f172a;
+            border-radius: 16px;
+            height: 300px;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 16px;
+            color: #64748b;
+        }
+        .log-item {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 10px;
+            padding: 10px 16px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .log-granted { border-left: 3px solid #22c55e; }
+        .log-denied { border-left: 3px solid #ef4444; }
+        .spinner-glow {
+            width: 60px; height: 60px;
+            border: 4px solid #334155;
+            border-top-color: #6366f1;
             border-radius: 50%;
-            margin-right: 5px;
-            vertical-align: middle;
+            animation: spin 0.8s linear infinite;
         }
-        
-        .status-active {
-            background-color: #28a745;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
-            100% {
-                opacity: 1;
-            }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <!-- القائمة العلوية -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="#">نظام التعرف على الوجه</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
+            <a class="navbar-brand fw-bold" href="#"><i class="fas fa-eye me-2 text-indigo-400"></i>نظام التعرف على الوجه</a>
+            <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.dashboard') }}">لوحة التحكم</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin.users') }}">إدارة المستخدمين</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin.access_logs') }}">سجلات الوصول</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="{{ url_for('main.live_view') }}">عرض الكاميرا المباشر</a>
-                    </li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('main.dashboard') }}">لوحة التحكم</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.users') }}">المستخدمون</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="{{ url_for('main.live_view') }}">الكاميرا المباشرة</a></li>
                 </ul>
-                <div class="d-flex">
-                    <a href="{{ url_for('auth.logout') }}" class="btn btn-light">تسجيل الخروج</a>
-                </div>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-secondary btn-sm">تسجيل الخروج</a>
             </div>
         </div>
     </nav>
 
-    <!-- محتوى الصفحة -->
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <span class="status-indicator status-active"></span>
-                            عرض الكاميرا المباشر
-                        </h5>
-                        <div>
-                            <span class="badge bg-success">متصل</span>
-                        </div>
+    <div class="container mt-4 pb-5">
+        <div class="row g-4">
+
+            <!-- Camera Column -->
+            <div class="col-lg-7">
+                <div class="camera-wrapper">
+                    <video id="webcam" autoplay playsinline></video>
+                    <canvas id="canvas"></canvas>
+
+                    <!-- No camera fallback -->
+                    <div id="no-camera" style="display:none; height:300px; background:#0f172a; border-radius:16px; align-items:center; justify-content:center; flex-direction:column; gap:16px; color:#64748b;">
+                        <i class="fas fa-video-slash" style="font-size:3rem;"></i>
+                        <p class="mb-0">لم يتم الكشف عن كاميرا<br><small>تأكد من إذن الكاميرا في المتصفح</small></p>
                     </div>
-                    <div class="card-body">
-                        <div class="camera-container">
-                            <img src="{{ url_for('main.video_feed') }}" class="camera-feed" alt="بث الكاميرا المباشر">
+
+                    <!-- Live Badge -->
+                    <span class="overlay-badge badge-live" id="live-badge">
+                        <i class="fas fa-circle me-1" style="font-size:9px;"></i> LIVE
+                    </span>
+                </div>
+
+                <!-- Controls -->
+                <div class="d-flex justify-content-center gap-3 mt-3">
+                    <button class="btn-scan" id="scanBtn" onclick="scanFace()">
+                        <i class="fas fa-face-smile me-2"></i>مسح الوجه
+                    </button>
+                    <button class="btn-toggle" id="autoBtn" onclick="toggleAuto()">
+                        <i class="fas fa-rotate me-1"></i>مسح تلقائي
+                    </button>
+                    <button class="btn-toggle" onclick="restartCamera()">
+                        <i class="fas fa-sync-alt me-1"></i>إعادة الكاميرا
+                    </button>
+                </div>
+            </div>
+
+            <!-- Result Column -->
+            <div class="col-lg-5">
+                <!-- Recognition Result -->
+                <div class="result-card" id="resultCard">
+                    <div class="text-center" id="resultIdle">
+                        <div class="result-icon text-muted">
+                            <i class="fas fa-user-circle"></i>
                         </div>
-                        
-                        <div class="camera-controls mt-4">
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle"></i>
-                                يتم اكتشاف الوجوه تلقائيًا ومقارنتها مع قاعدة البيانات للتعرف على المستخدمين المسجلين.
-                            </div>
+                        <h5 class="text-muted mb-1">في انتظار المسح</h5>
+                        <small class="text-muted">اضغط "مسح الوجه" أو فعّل المسح التلقائي</small>
+                    </div>
+                    <div class="text-center d-none" id="resultLoading">
+                        <div class="spinner-glow mx-auto mb-3"></div>
+                        <p class="text-muted">جاري التحليل...</p>
+                    </div>
+                    <div class="d-none" id="resultData">
+                        <div class="text-center mb-3">
+                            <div class="result-icon" id="resultIcon">✅</div>
+                            <h4 id="resultName" class="fw-bold mb-1">—</h4>
+                            <p id="resultMessage" class="text-muted mb-0">—</p>
+                        </div>
+                        <hr style="border-color:#334155;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">نسبة الثقة</small>
+                            <small id="confidenceText" class="text-light fw-bold">—</small>
+                        </div>
+                        <div class="confidence-bar mt-1">
+                            <div class="confidence-fill" id="confidenceFill" style="width:0%"></div>
+                        </div>
+                        <div class="mt-3 d-flex justify-content-between">
+                            <small class="text-muted" id="resultTime">—</small>
+                            <span class="badge" id="resultBadge">—</span>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        
-        <!-- معلومات إضافية -->
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">إحصائيات الكاميرا</h5>
+
+                <!-- Stats Row -->
+                <div class="row g-3 mt-1">
+                    <div class="col-4">
+                        <div class="stat-box">
+                            <div class="stat-num" id="scanCount">0</div>
+                            <div class="stat-label">عمليات مسح</div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <ul class="list-group">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                حالة الكاميرا
-                                <span class="badge bg-success">نشطة</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                دقة الكاميرا
-                                <span>240 × 180</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                معدل الإطارات
-                                <span>3 إطار/ثانية</span>
-                            </li>
-                        </ul>
+                    <div class="col-4">
+                        <div class="stat-box">
+                            <div class="stat-num text-success" id="grantedCount">0</div>
+                            <div class="stat-label">مسموح</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-box">
+                            <div class="stat-num text-danger" id="deniedCount">0</div>
+                            <div class="stat-label">مرفوض</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">معلومات النظام</h5>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                نموذج التعرف على الوجه
-                                <span>{{ config.FACE_RECOGNITION_MODEL }}</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                نموذج اكتشاف الوجه
-                                <span>{{ config.FACE_DETECTION_MODEL }}</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                عتبة التشابه
-                                <span>{{ config.FACE_SIMILARITY_THRESHOLD }}</span>
-                            </li>
-                        </ul>
+
+                <!-- Activity Log -->
+                <div class="mt-3">
+                    <h6 class="text-muted mb-2"><i class="fas fa-list me-1"></i>سجل النشاط</h6>
+                    <div id="activityLog" style="max-height:200px; overflow-y:auto;">
+                        <div class="text-center text-muted py-3" id="emptyLog">
+                            <i class="fas fa-clock-rotate-left"></i> لا يوجد نشاط بعد
+                        </div>
                     </div>
                 </div>
             </div>
@@ -169,6 +258,166 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        let video = document.getElementById('webcam');
+        let canvas = document.getElementById('canvas');
+        let stream = null;
+        let autoMode = false;
+        let autoInterval = null;
+        let isScanning = false;
+        let stats = { total: 0, granted: 0, denied: 0 };
+
+        // Start camera on page load
+        window.onload = startCamera;
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 640, height: 480, facingMode: 'user' },
+                    audio: false
+                });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                document.getElementById('no-camera').style.display = 'none';
+            } catch (err) {
+                console.error('Camera error:', err);
+                video.style.display = 'none';
+                document.getElementById('no-camera').style.display = 'flex';
+                document.getElementById('live-badge').style.display = 'none';
+                document.getElementById('scanBtn').disabled = true;
+            }
+        }
+
+        function restartCamera() {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            startCamera();
+        }
+
+        function toggleAuto() {
+            autoMode = !autoMode;
+            const btn = document.getElementById('autoBtn');
+            if (autoMode) {
+                btn.innerHTML = '<i class="fas fa-stop me-1"></i>إيقاف التلقائي';
+                btn.style.background = '#7c3aed';
+                btn.style.color = 'white';
+                autoInterval = setInterval(scanFace, 3000);
+            } else {
+                btn.innerHTML = '<i class="fas fa-rotate me-1"></i>مسح تلقائي';
+                btn.style.background = '#334155';
+                btn.style.color = '#94a3b8';
+                clearInterval(autoInterval);
+            }
+        }
+
+        async function scanFace() {
+            if (isScanning || !stream) return;
+            isScanning = true;
+
+            // Show loading
+            document.getElementById('resultIdle').classList.add('d-none');
+            document.getElementById('resultData').classList.add('d-none');
+            document.getElementById('resultLoading').classList.remove('d-none');
+            document.getElementById('live-badge').className = 'overlay-badge badge-processing';
+            document.getElementById('live-badge').innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> تحليل';
+
+            // Capture frame from video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+            try {
+                const response = await fetch('/api/recognize_frame', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData })
+                });
+                const data = await response.json();
+                showResult(data);
+            } catch (err) {
+                showResult({ success: false, error: 'خطأ في الاتصال بالسيرفر' });
+            } finally {
+                isScanning = false;
+                document.getElementById('live-badge').className = 'overlay-badge badge-live';
+                document.getElementById('live-badge').innerHTML = '<i class="fas fa-circle me-1" style="font-size:9px;"></i> LIVE';
+            }
+        }
+
+        function showResult(data) {
+            document.getElementById('resultLoading').classList.add('d-none');
+            document.getElementById('resultData').classList.remove('d-none');
+
+            const card = document.getElementById('resultCard');
+            const icon = document.getElementById('resultIcon');
+            const name = document.getElementById('resultName');
+            const message = document.getElementById('resultMessage');
+            const badge = document.getElementById('resultBadge');
+            const fill = document.getElementById('confidenceFill');
+            const confText = document.getElementById('confidenceText');
+            const time = document.getElementById('resultTime');
+
+            stats.total++;
+            document.getElementById('scanCount').textContent = stats.total;
+
+            const now = new Date();
+            time.textContent = now.toLocaleTimeString('ar-SA');
+
+            if (!data.success) {
+                // System error
+                card.className = 'result-card';
+                icon.textContent = '⚠️';
+                name.textContent = 'خطأ';
+                message.textContent = data.error || 'فشل في المعالجة';
+                badge.className = 'badge bg-warning text-dark';
+                badge.textContent = 'خطأ';
+                fill.style.width = '0%';
+                confText.textContent = '—';
+            } else if (data.access_granted) {
+                // Authorized
+                card.className = 'result-card authorized';
+                icon.textContent = '✅';
+                name.textContent = data.username || 'مسموح';
+                message.textContent = data.message || 'تم التعرف بنجاح';
+                badge.className = 'badge bg-success';
+                badge.textContent = 'مسموح';
+                const conf = data.confidence || 0;
+                fill.style.width = conf + '%';
+                confText.textContent = conf + '%';
+                stats.granted++;
+                document.getElementById('grantedCount').textContent = stats.granted;
+                addLog(data.username, true, conf);
+            } else {
+                // Unauthorized
+                card.className = 'result-card unauthorized';
+                icon.textContent = '❌';
+                name.textContent = 'غير معروف';
+                message.textContent = data.message || data.error || 'لم يتم التعرف';
+                badge.className = 'badge bg-danger';
+                badge.textContent = 'مرفوض';
+                fill.style.width = '0%';
+                confText.textContent = '0%';
+                stats.denied++;
+                document.getElementById('deniedCount').textContent = stats.denied;
+                addLog('غير معروف', false, 0);
+            }
+        }
+
+        function addLog(name, granted, confidence) {
+            document.getElementById('emptyLog').style.display = 'none';
+            const log = document.getElementById('activityLog');
+            const item = document.createElement('div');
+            item.className = `log-item ${granted ? 'log-granted' : 'log-denied'}`;
+            item.innerHTML = `
+                <span style="font-size:1.2rem">${granted ? '✅' : '❌'}</span>
+                <div>
+                    <div class="fw-semibold">${name}</div>
+                    <div class="text-muted" style="font-size:11px">${new Date().toLocaleTimeString('ar-SA')} ${confidence ? '— ' + confidence + '%' : ''}</div>
+                </div>
+            `;
+            log.insertBefore(item, log.firstChild);
+            // Keep max 10 logs
+            while (log.children.length > 11) log.removeChild(log.lastChild);
+        }
+    </script>
 </body>
 </html>

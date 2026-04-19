@@ -506,11 +506,110 @@ def recognize():
 def open_door():
     """محاكاة فتح الباب"""
     try:
-        # رسالة بسيطة بدلاً من التحكم بالباب
         access_logger.info("تمت محاكاة فتح الباب")
         return jsonify({'success': True, 'message': 'تمت محاكاة فتح الباب بنجاح - الباب غير متصل حالياً'})
     except Exception as e:
         app_logger.error(f"فشل في محاكاة فتح الباب: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@api_bp.route('/recognize_frame', methods=['POST'])
+def recognize_frame():
+    """
+    التعرف على الوجه من صورة يُرسلها المتصفح (base64).
+    يُستخدم بدلاً من الكاميرا المباشرة على الـ Cloud.
+    """
+    try:
+        import base64
+
+        data = request.get_json()
+        if not data or 'image' not in data:
+            return jsonify({'success': False, 'error': 'لم يتم إرسال صورة'})
+
+        # فك تشفير الصورة من base64
+        image_data = data['image']
+        # إزالة رأس البيانات مثل "data:image/jpeg;base64,"
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+
+        image_bytes = base64.b64decode(image_data)
+        image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({'success': False, 'error': 'فشل في قراءة الصورة'})
+
+        # اكتشاف الوجوه في الصورة
+        faces = face_detector.detect_faces(frame)
+        if len(faces) == 0:
+            return jsonify({'success': False, 'error': 'لم يتم اكتشاف أي وجه - تأكد من إضاءة جيدة'})
+
+        if len(faces) > 1:
+            return jsonify({'success': False, 'error': 'تم اكتشاف أكثر من وجه - تأكد من وجود شخص واحد فقط'})
+
+        # محاذاة الوجه
+        face_aligned = face_aligner.align_face(frame, faces[0])
+
+        # استخراج المتجه المضمن
+        embedding = face_embedder.get_embedding(face_aligned)
+
+        # الحصول على جميع متجهات الوجوه من قاعدة البيانات
+        embeddings_dict = db.get_face_embeddings()
+
+        if not embeddings_dict:
+            return jsonify({'success': False, 'error': 'لا توجد وجوه مسجلة في النظام - أضف مستخدمين أولاً'})
+
+        # مطابقة الوجه
+        user_id, confidence = face_matcher.match(
+            embedding, embeddings_dict, method=Config.FACE_SIMILARITY_METHOD
+        )
+
+        # حفظ صورة محاولة الوصول
+        timestamp = int(time.time())
+        image_filename = f"access_{timestamp}.jpg"
+        image_path = os.path.join(ACCESS_IMAGES_FOLDER, image_filename)
+        try:
+            cv2.imwrite(image_path, frame)
+        except Exception:
+            image_path = None
+
+        if user_id is not None:
+            user = db.get_user_by_id(user_id)
+            if user:
+                db.log_access_attempt(
+                    user_id=user_id,
+                    access_granted=True,
+                    confidence=int(confidence * 100),
+                    image_path=image_path,
+                    notes=f"Browser camera - {user.username} - {int(confidence * 100)}%"
+                )
+                access_logger.info(f"Browser camera: access granted - {user.username} ({int(confidence * 100)}%)")
+                return jsonify({
+                    'success': True,
+                    'access_granted': True,
+                    'user_id': user_id,
+                    'username': user.username,
+                    'confidence': int(confidence * 100),
+                    'message': f'مرحباً {user.username}! تم التعرف عليك بنجاح.'
+                })
+
+        # لم يتم التعرف
+        db.log_access_attempt(
+            user_id=None,
+            access_granted=False,
+            confidence=0,
+            image_path=image_path,
+            notes="Browser camera - unauthorized"
+        )
+        access_logger.warning("Browser camera: access denied - unknown face")
+        return jsonify({
+            'success': True,
+            'access_granted': False,
+            'message': 'لم يتم التعرف عليك. الوصول مرفوض.'
+        })
+
+    except Exception as e:
+        app_logger.error(f"خطأ في recognize_frame: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
 
 @api_bp.route('/door/status', methods=['GET'])
