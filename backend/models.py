@@ -72,40 +72,42 @@ class AccessLog(Base):
 def init_db():
     """تهيئة قاعدة البيانات وإنشاء الجداول"""
     try:
-        # التأكد من وجود مجلد قاعدة البيانات
-        db_dir = os.path.dirname(Config.DATABASE_URI.replace('sqlite:///', ''))
-        create_directory_if_not_exists(db_dir)
-        
-        # إنشاء محرك قاعدة البيانات
-        engine = create_engine(Config.DATABASE_URI)
-        
-        # إنشاء الجداول
+        db_uri = Config.DATABASE_URI
+
+        # Only create directory for SQLite databases
+        if db_uri.startswith('sqlite:///'):
+            db_path = db_uri.replace('sqlite:///', '')
+            db_dir = os.path.dirname(db_path)
+            if db_dir:
+                create_directory_if_not_exists(db_dir)
+
+        # Create the engine and tables
+        engine = create_engine(db_uri)
         Base.metadata.create_all(engine)
-        
-        # إنشاء جلسة
+
         Session = sessionmaker(bind=engine)
         session = Session()
-        
-        # التحقق من وجود مستخدم مسؤول
+
+        # Create default admin if none exists
         admin_exists = session.query(User).filter(User.is_admin == True).first() is not None
-        
-        # إنشاء مستخدم مسؤول افتراضي إذا لم يكن موجودًا
+
         if not admin_exists:
-            admin_password_hash = hash_password('admin')
+            from werkzeug.security import generate_password_hash
             admin_user = User(
                 username='admin',
                 email='admin@example.com',
-                password_hash=admin_password_hash,
-                is_admin=True
+                password_hash=generate_password_hash('admin123'),
+                is_admin=True,
+                is_active=True
             )
             session.add(admin_user)
             session.commit()
-            security_logger.info("تم إنشاء مستخدم مسؤول افتراضي")
-        
+            security_logger.info("Default admin user created: admin@example.com / admin123")
+
         session.close()
-        app_logger.info("تم تهيئة قاعدة البيانات بنجاح")
-        
+        app_logger.info("Database initialized successfully")
         return True
+
     except Exception as e:
-        app_logger.error(f"فشل في تهيئة قاعدة البيانات: {str(e)}")
+        app_logger.error(f"Database initialization failed: {str(e)}")
         return False
