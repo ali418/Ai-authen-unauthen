@@ -4,14 +4,30 @@ from dotenv import load_dotenv
 # تحميل المتغيرات البيئية من ملف .env
 load_dotenv()
 
+def _get_database_url():
+    """
+    Railway uses DATABASE_URL for PostgreSQL.
+    SQLAlchemy 2.x requires 'postgresql://' not 'postgres://'
+    Falls back to SQLite for local development.
+    """
+    # Railway PostgreSQL URL
+    db_url = os.getenv('DATABASE_URL') or os.getenv('DATABASE_URI')
+    if db_url:
+        # Fix old-style 'postgres://' to 'postgresql://'
+        if db_url.startswith('postgres://'):
+            db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        return db_url
+    # Local development fallback
+    return 'sqlite:///face_recognition.db'
+
 # إعدادات المشروع
 class Config:
     # إعدادات عامة
     DEBUG = os.getenv('DEBUG', 'False') == 'True'
-    SECRET_KEY = os.getenv('SECRET_KEY', 'default_secret_key')
+    SECRET_KEY = os.getenv('SECRET_KEY', 'change_this_in_production_secret_key')
     
     # إعدادات قاعدة البيانات
-    DATABASE_URI = os.getenv('DATABASE_URI', 'sqlite:///face_recognition.db')
+    DATABASE_URI = _get_database_url()
     
     # إعدادات التعرف على الوجه
     FACE_RECOGNITION_MODEL = os.getenv('FACE_RECOGNITION_MODEL', 'simple')

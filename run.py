@@ -8,6 +8,13 @@ Run script for Face Recognition Application
 
 import sys
 import os
+import io
+
+# Fix Unicode encoding for Arabic text on Windows console
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # إضافة المجلد الرئيسي إلى مسار البحث
 project_root = os.path.dirname(os.path.abspath(__file__))
