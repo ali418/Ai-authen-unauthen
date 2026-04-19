@@ -6,7 +6,7 @@ from backend.database import Database
 from backend.models import User, FaceImage, AccessLog
 import os
 from datetime import datetime, timedelta
-from sqlalchemy import func, cast, Date, case
+from sqlalchemy import func, cast, Date, case, Integer
 
 db = Database()
 
@@ -71,32 +71,46 @@ def admin_required(func):
 @admin_bp.route('/')
 @admin_required
 def index():
-    # إحصائيات عامة
-    total_users = db.session.query(User).count()
-    active_users = db.session.query(User).filter_by(is_active=True).count()
-    total_access_attempts = db.session.query(AccessLog).count()
-    successful_access = db.session.query(AccessLog).filter_by(access_granted=True).count()
-    
-    # آخر محاولات الوصول
-    recent_logs = db.session.query(AccessLog).order_by(AccessLog.timestamp.desc()).limit(10).all()
-    
-    # إحصائيات الوصول خلال الأسبوع الماضي
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    daily_stats = db.session.query(
-        cast(AccessLog.timestamp, Date).label('date'),
-        func.count(AccessLog.id).label('total'),
-        func.sum(case([(AccessLog.access_granted, 1)], else_=0)).label('granted')
-    ).filter(AccessLog.timestamp >= week_ago)\
-    .group_by(cast(AccessLog.timestamp, Date))\
-    .order_by(cast(AccessLog.timestamp, Date)).all()
-    
-    return render_template('admin/dashboard.html',
-                          total_users=total_users,
-                          active_users=active_users,
-                          total_access=total_access_attempts,
-                          successful_access=successful_access,
-                          recent_logs=recent_logs,
-                          daily_stats=daily_stats)
+    try:
+        # إحصائيات عامة
+        total_users = db.session.query(User).count()
+        active_users = db.session.query(User).filter_by(is_active=True).count()
+        total_access_attempts = db.session.query(AccessLog).count()
+        successful_access = db.session.query(AccessLog).filter_by(access_granted=True).count()
+
+        # آخر محاولات الوصول
+        recent_logs = db.session.query(AccessLog).order_by(AccessLog.timestamp.desc()).limit(10).all()
+
+        # إحصائيات الوصول خلال الأسبوع الماضي
+        week_ago = datetime.utcnow() - timedelta(days=7)
+        try:
+            # SQLAlchemy 2.x compatible case() syntax
+            daily_stats = db.session.query(
+                cast(AccessLog.timestamp, Date).label('date'),
+                func.count(AccessLog.id).label('total'),
+                func.sum(case((AccessLog.access_granted == True, 1), else_=0)).label('granted')
+            ).filter(AccessLog.timestamp >= week_ago)\
+            .group_by(cast(AccessLog.timestamp, Date))\
+            .order_by(cast(AccessLog.timestamp, Date)).all()
+        except Exception:
+            daily_stats = []
+
+        return render_template('admin/dashboard.html',
+                              total_users=total_users,
+                              active_users=active_users,
+                              total_access=total_access_attempts,
+                              successful_access=successful_access,
+                              recent_logs=recent_logs,
+                              daily_stats=daily_stats)
+    except Exception as e:
+        # Fallback: show dashboard with zeros if DB query fails
+        return render_template('admin/dashboard.html',
+                              total_users=0,
+                              active_users=0,
+                              total_access=0,
+                              successful_access=0,
+                              recent_logs=[],
+                              daily_stats=[])
 
 # إدارة المستخدمين
 @admin_bp.route('/users')
