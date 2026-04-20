@@ -616,16 +616,56 @@ def recognize_frame():
 def door_status():
     """الحصول على حالة الباب"""
     try:
-        # حالة وهمية للتوضيح - تم تبسيطها
         status = {
             'is_open': False,
             'message': 'نظام التحكم بالباب غير متصل حالياً'
         }
-        
         return jsonify({'success': True, 'status': status})
     except Exception as e:
         app_logger.error(f"فشل في الحصول على حالة الباب: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
+
+
+@api_bp.route('/detect_faces', methods=['POST'])
+def detect_faces():
+    """
+    كشف الوجوه في صورة base64 مُرسلة من المتصفح.
+    يُعيد إحداثيات الوجوه لرسم المستطيلات على الكاميرا.
+    """
+    try:
+        import base64
+
+        data = request.get_json()
+        if not data or 'image' not in data:
+            return jsonify({'success': False, 'faces': []})
+
+        image_data = data['image']
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+
+        image_bytes = base64.b64decode(image_data)
+        image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+        if frame is None:
+            return jsonify({'success': False, 'faces': []})
+
+        faces = face_detector.detect_faces(frame)
+
+        # Convert to plain list of [x, y, w, h]
+        faces_list = []
+        for f in faces:
+            if hasattr(f, '__iter__') and len(f) == 4:
+                x, y, w, h = int(f[0]), int(f[1]), int(f[2]), int(f[3])
+                faces_list.append([x, y, w, h])
+
+        return jsonify({'success': True, 'faces': faces_list})
+
+    except Exception as e:
+        app_logger.error(f"خطأ في detect_faces: {str(e)}")
+        return jsonify({'success': False, 'faces': [], 'error': str(e)})
+
+
 
 @main_bp.route('/live_view')
 @login_required

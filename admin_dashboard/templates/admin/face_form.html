@@ -1,7 +1,7 @@
 {% extends 'admin/layout.html' %}
 
 {% block title %}إضافة صورة وجه{% endblock %}
-{% block page_title %}إضافة صورة وجه لـ {{ user.name }}{% endblock %}
+{% block page_title %}إضافة صورة وجه لـ {{ user.username }}{% endblock %}
 
 {% block page_actions %}
 <a href="{{ url_for('admin.user_faces', user_id=user.id) }}" class="btn btn-sm btn-secondary">
@@ -9,105 +9,150 @@
 </a>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    .camera-wrapper {
+        position: relative;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        max-width: 100%;
+    }
+    #video {
+        width: 100%;
+        display: block;
+        border-radius: 12px;
+        transform: scaleX(-1); /* mirror */
+    }
+    #face-canvas {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        transform: scaleX(-1); /* match video mirror */
+    }
+    #canvas { display: none; }
+    .status-dot {
+        width: 10px; height: 10px;
+        background: #22c55e;
+        border-radius: 50%;
+        display: inline-block;
+        animation: blink 1.5s infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .tab-btn {
+        cursor: pointer;
+        padding: 10px 24px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        background: white;
+        color: #64748b;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .tab-btn.active {
+        background: #6366f1;
+        border-color: #6366f1;
+        color: white;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload" type="button" role="tab" aria-controls="upload" aria-selected="true">
-                            <i class="fas fa-upload me-1"></i> رفع صورة
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera" type="button" role="tab" aria-controls="camera" aria-selected="false">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+
+                <!-- Tabs -->
+                <div class="d-flex gap-2 mb-4">
+                    <button class="tab-btn active" id="btn-upload" onclick="switchTab('upload')">
+                        <i class="fas fa-upload me-1"></i> رفع صورة
+                    </button>
+                    <button class="tab-btn" id="btn-camera" onclick="switchTab('camera')">
+                        <i class="fas fa-camera me-1"></i> التقاط من الكاميرا
+                    </button>
+                </div>
+
+                <!-- ===== Tab: Upload ===== -->
+                <div id="tab-upload">
+                    <form method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="image" class="form-label fw-semibold">صورة الوجه</label>
+                            <input type="file" name="image" id="image"
+                                   class="form-control" accept="image/*"
+                                   onchange="previewUpload(this)">
+                            <div class="form-text">يرجى اختيار صورة واضحة للوجه بتنسيق JPG أو PNG.</div>
+                        </div>
+
+                        <!-- Preview -->
+                        <div id="upload-preview-box" class="text-center mb-3" style="display:none;">
+                            <img id="upload-preview-img"
+                                 src="#" alt="معاينة"
+                                 class="img-fluid img-thumbnail rounded"
+                                 style="max-height:280px;">
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-save me-1"></i> حفظ الصورة
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- ===== Tab: Camera ===== -->
+                <div id="tab-camera" style="display:none;">
+
+                    <!-- Camera live view with face overlay -->
+                    <div class="camera-wrapper mb-3" id="camera-wrapper">
+                        <video id="video" autoplay playsinline muted></video>
+                        <canvas id="face-canvas"></canvas>
+                    </div>
+
+                    <!-- No camera message -->
+                    <div id="no-cam-msg" class="alert alert-warning" style="display:none;">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        لا يمكن الوصول للكاميرا. تأكد من منح الإذن في المتصفح.
+                    </div>
+
+                    <!-- Status -->
+                    <div class="d-flex align-items-center gap-2 mb-3" id="cam-status" style="display:none!important;">
+                        <span class="status-dot"></span>
+                        <small class="text-muted">الكاميرا نشطة - <span id="face-status">جاري البحث عن وجه...</span></small>
+                    </div>
+
+                    <!-- Capture controls -->
+                    <div class="text-center mb-3" id="capture-controls">
+                        <button class="btn btn-primary btn-lg px-5" id="capture-btn" onclick="capturePhoto()" disabled>
                             <i class="fas fa-camera me-1"></i> التقاط صورة
                         </button>
-                    </li>
-                </ul>
-                
-                <div class="tab-content" id="myTabContent">
-                    <!-- تبويب رفع الصورة -->
-                    <div class="tab-pane fade show active" id="upload" role="tabpanel" aria-labelledby="upload-tab">
-                        <form method="post" enctype="multipart/form-data" novalidate>
-                            {# تم إزالة csrf_token لأننا لم نعد نستخدم flask_wtf #}
-                            
-                            <div class="mb-3">
-                                <label for="image" class="form-label">صورة الوجه</label>
-                                <input type="file" name="image" id="image" 
-                                       class="form-control {{ 'is-invalid' if form.errors.get('image') }}">
-                                {% if form.errors.get('image') %}
-                                    <div class="invalid-feedback">
-                                        {{ form.errors.get('image') }}
-                                    </div>
-                                {% else %}
-                                    <div class="form-text">
-                                        يرجى اختيار صورة واضحة للوجه بتنسيق JPG أو PNG.
-                                    </div>
-                                {% endif %}
-                                
-                                <div class="mt-3" id="image-preview-container" style="display: none;">
-                                    <img id="image-preview" src="#" alt="معاينة الصورة" class="img-fluid img-thumbnail" style="max-height: 300px;">
-                                </div>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="notes" class="form-label">ملاحظات</label>
-                                <textarea name="notes" id="notes" class="form-control {{ 'is-invalid' if form.errors.get('notes') }}"
-                                          rows="3">{{ form.notes }}</textarea>
-                                {% if form.errors.get('notes') %}
-                                    <div class="invalid-feedback">
-                                        {{ form.errors.get('notes') }}
-                                    </div>
-                                {% endif %}
-                            </div>
-                            
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary">حفظ</button>
+                    </div>
+
+                    <!-- Captured image + save form -->
+                    <div id="captured-section" style="display:none;">
+                        <div class="text-center mb-3">
+                            <img id="captured-img" src="#" alt="الصورة الملتقطة"
+                                 class="img-fluid img-thumbnail rounded"
+                                 style="max-height:280px;">
+                        </div>
+                        <form id="camera-form" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="image_data" id="image-data-input">
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="fas fa-save me-1"></i> حفظ الصورة
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="retakePhoto()">
+                                    <i class="fas fa-redo me-1"></i> إعادة التقاط
+                                </button>
                             </div>
                         </form>
                     </div>
-                    
-                    <!-- تبويب التقاط الصورة -->
-                    <div class="tab-pane fade" id="camera" role="tabpanel" aria-labelledby="camera-tab">
-                        <div class="text-center mb-3">
-                            <div id="camera-container">
-                                <video id="video" width="100%" height="auto" autoplay></video>
-                            </div>
-                            <div class="mt-3">
-                                <button id="capture-btn" class="btn btn-primary">
-                                    <i class="fas fa-camera me-1"></i> التقاط صورة
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div id="capture-result" style="display: none;">
-                            <div class="text-center mb-3">
-                                <canvas id="canvas" style="display: none;"></canvas>
-                                <img id="captured-image" class="img-fluid img-thumbnail" style="max-height: 300px;">
-                            </div>
-                            
-                            <form id="camera-form" method="post" enctype="multipart/form-data">
-                                <input type="hidden" name="image_data" id="image-data">
-                                
-                                <div class="mb-3">
-                                    <label for="camera-notes" class="form-label">ملاحظات</label>
-                                    <textarea name="notes" id="camera-notes" class="form-control" rows="3"></textarea>
-                                </div>
-                                
-                                <div class="d-grid gap-2">
-                                    <button type="submit" class="btn btn-success">
-                                        <i class="fas fa-save me-1"></i> حفظ الصورة
-                                    </button>
-                                    <button type="button" id="retake-btn" class="btn btn-secondary">
-                                        <i class="fas fa-redo me-1"></i> إعادة التقاط
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
+
+                    <!-- Hidden canvas for capture -->
+                    <canvas id="canvas" style="display:none;"></canvas>
                 </div>
+
             </div>
         </div>
     </div>
@@ -116,110 +161,192 @@
 
 {% block extra_js %}
 <script>
-    // معاينة الصورة المرفوعة
-    document.addEventListener('DOMContentLoaded', function() {
-        const imageInput = document.getElementById('image');
-        const imagePreview = document.getElementById('imagePreview');
-        const previewImage = imagePreview.querySelector('img');
-        
-        imageInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    previewImage.src = e.target.result;
-                    imagePreview.style.display = 'block';
-                }
-                
-                reader.readAsDataURL(this.files[0]);
-            } else {
-                imagePreview.style.display = 'none';
-            }
+let stream = null;
+let faceDetectInterval = null;
+let currentTab = 'upload';
+
+// ─── Tab Switching ───────────────────────────────────────────
+function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-upload').style.display  = tab === 'upload'  ? 'block' : 'none';
+    document.getElementById('tab-camera').style.display  = tab === 'camera'  ? 'block' : 'none';
+    document.getElementById('btn-upload').className = 'tab-btn' + (tab === 'upload'  ? ' active' : '');
+    document.getElementById('btn-camera').className = 'tab-btn' + (tab === 'camera'  ? ' active' : '');
+
+    if (tab === 'camera') {
+        startCamera();
+    } else {
+        stopCamera();
+    }
+}
+
+// ─── Upload Preview ──────────────────────────────────────────
+function previewUpload(input) {
+    const box = document.getElementById('upload-preview-box');
+    const img = document.getElementById('upload-preview-img');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            img.src = e.target.result;
+            box.style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        box.style.display = 'none';
+    }
+}
+
+// ─── Camera ──────────────────────────────────────────────────
+function startCamera() {
+    const video = document.getElementById('video');
+    const noMsg = document.getElementById('no-cam-msg');
+    const captureBtn = document.getElementById('capture-btn');
+    const status = document.getElementById('cam-status');
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+        .then(s => {
+            stream = s;
+            video.srcObject = s;
+            noMsg.style.display = 'none';
+            status.style.removeProperty('display');
+            startFaceDetection();
+        })
+        .catch(err => {
+            console.error('Camera error:', err);
+            noMsg.style.display = 'block';
+            captureBtn.disabled = true;
         });
-        
-        // التقاط الصورة من الكاميرا
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const captureBtn = document.getElementById('captureBtn');
-        const retakeBtn = document.getElementById('retakeBtn');
-        const captureForm = document.getElementById('captureForm');
-        const imageData = document.getElementById('imageData');
-        const faceOverlay = document.getElementById('faceOverlay');
-        
-        let stream = null;
-        
-        // تبديل التبويب للكاميرا
-        document.getElementById('camera-tab').addEventListener('click', function() {
-            startCamera();
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+    }
+    stopFaceDetection();
+    clearOverlay();
+}
+
+// ─── Face Detection Overlay (browser-side via API) ───────────
+function startFaceDetection() {
+    // Send frame to server every 800ms to detect faces and draw boxes
+    faceDetectInterval = setInterval(detectFaceOverlay, 800);
+}
+
+function stopFaceDetection() {
+    if (faceDetectInterval) {
+        clearInterval(faceDetectInterval);
+        faceDetectInterval = null;
+    }
+}
+
+function clearOverlay() {
+    const fc = document.getElementById('face-canvas');
+    if (fc) {
+        const ctx = fc.getContext('2d');
+        ctx.clearRect(0, 0, fc.width, fc.height);
+    }
+}
+
+async function detectFaceOverlay() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const faceCanvas = document.getElementById('face-canvas');
+    const captureBtn = document.getElementById('capture-btn');
+    const faceStatus = document.getElementById('face-status');
+
+    if (!stream || video.readyState < 2) return;
+
+    // Capture current frame
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.6);
+
+    try {
+        const resp = await fetch('/api/detect_faces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageData })
         });
-        
-        // إيقاف الكاميرا عند تبديل التبويب
-        document.getElementById('upload-tab').addEventListener('click', function() {
-            stopCamera();
-        });
-        
-        function startCamera() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ video: true })
-                    .then(function(mediaStream) {
-                        stream = mediaStream;
-                        video.srcObject = mediaStream;
-                        video.play();
-                        
-                        // إظهار زر الالتقاط وإخفاء النموذج
-                        captureBtn.style.display = 'block';
-                        retakeBtn.style.display = 'none';
-                        captureForm.style.display = 'none';
-                    })
-                    .catch(function(error) {
-                        console.error('خطأ في الوصول للكاميرا:', error);
-                        alert('لا يمكن الوصول إلى الكاميرا. يرجى التحقق من الإذن.');
-                    });
-            }
+        const data = await resp.json();
+
+        // Sync overlay canvas size with video
+        faceCanvas.width = video.videoWidth;
+        faceCanvas.height = video.videoHeight;
+        const fCtx = faceCanvas.getContext('2d');
+        fCtx.clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+
+        if (data.faces && data.faces.length > 0) {
+            const face = data.faces[0];
+            const [x, y, w, h] = face;
+
+            // Draw rectangle
+            fCtx.strokeStyle = '#22c55e';
+            fCtx.lineWidth = 3;
+            fCtx.strokeRect(x, y, w, h);
+
+            // Corner decorations
+            const cs = 20;
+            fCtx.strokeStyle = '#6366f1';
+            fCtx.lineWidth = 4;
+            // Top-left
+            fCtx.beginPath(); fCtx.moveTo(x, y+cs); fCtx.lineTo(x,y); fCtx.lineTo(x+cs,y); fCtx.stroke();
+            // Top-right
+            fCtx.beginPath(); fCtx.moveTo(x+w-cs, y); fCtx.lineTo(x+w,y); fCtx.lineTo(x+w,y+cs); fCtx.stroke();
+            // Bottom-left
+            fCtx.beginPath(); fCtx.moveTo(x, y+h-cs); fCtx.lineTo(x,y+h); fCtx.lineTo(x+cs,y+h); fCtx.stroke();
+            // Bottom-right
+            fCtx.beginPath(); fCtx.moveTo(x+w-cs, y+h); fCtx.lineTo(x+w,y+h); fCtx.lineTo(x+w,y+h-cs); fCtx.stroke();
+
+            // Label
+            fCtx.fillStyle = 'rgba(99,102,241,0.85)';
+            fCtx.fillRect(x, y - 28, 100, 26);
+            fCtx.fillStyle = '#fff';
+            fCtx.font = 'bold 14px Arial';
+            fCtx.fillText('وجه مكتشف', x + 6, y - 10);
+
+            captureBtn.disabled = false;
+            if (faceStatus) faceStatus.textContent = '✅ تم اكتشاف وجه - جاهز للالتقاط';
+        } else {
+            captureBtn.disabled = true;
+            if (faceStatus) faceStatus.textContent = '🔍 جاري البحث عن وجه...';
         }
-        
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-        }
-        
-        // التقاط الصورة
-        captureBtn.addEventListener('click', function() {
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // تحويل الصورة إلى base64
-            const dataURL = canvas.toDataURL('image/jpeg');
-            imageData.value = dataURL;
-            
-            // إظهار النموذج وزر إعادة الالتقاط
-            captureBtn.style.display = 'none';
-            retakeBtn.style.display = 'block';
-            captureForm.style.display = 'block';
-            
-            // إيقاف الفيديو مؤقتًا
-            video.pause();
-        });
-        
-        // إعادة التقاط الصورة
-        retakeBtn.addEventListener('click', function() {
-            // إعادة تشغيل الفيديو
-            video.play();
-            
-            // إخفاء النموذج وإظهار زر الالتقاط
-            captureBtn.style.display = 'block';
-            retakeBtn.style.display = 'none';
-            captureForm.style.display = 'none';
-        });
-        
-        // إيقاف الكاميرا عند مغادرة الصفحة
-        window.addEventListener('beforeunload', function() {
-            stopCamera();
-        });
-    });
+    } catch(e) {
+        console.warn('Face detect error:', e);
+    }
+}
+
+// ─── Capture & Retake ────────────────────────────────────────
+function capturePhoto() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const capturedImg = document.getElementById('captured-img');
+    const imageDataInput = document.getElementById('image-data-input');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const dataURL = canvas.toDataURL('image/jpeg', 0.9);
+
+    capturedImg.src = dataURL;
+    imageDataInput.value = dataURL;
+
+    // Show captured section, hide controls
+    document.getElementById('capture-controls').style.display = 'none';
+    document.getElementById('captured-section').style.display = 'block';
+    stopFaceDetection();
+    clearOverlay();
+}
+
+function retakePhoto() {
+    document.getElementById('capture-controls').style.display = 'block';
+    document.getElementById('captured-section').style.display = 'none';
+    startFaceDetection();
+}
+
+// ─── Cleanup ─────────────────────────────────────────────────
+window.addEventListener('beforeunload', stopCamera);
 </script>
 {% endblock %}
