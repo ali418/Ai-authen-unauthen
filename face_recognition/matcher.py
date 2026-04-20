@@ -53,31 +53,34 @@ class FaceMatcher:
             tuple: (user_id, similarity) للتطابق الأفضل، أو (None, 0) إذا لم يتم العثور على تطابق
         """
         if not database_embeddings:
-            return None, 0
-        
+            return None, 0.0
+
         best_match = None
-        best_similarity = -1 if method == 'cosine' else float('inf')
-        
+        best_similarity = -1.0 if method == 'cosine' else float('inf')
+
         for user_id, db_embedding in database_embeddings.items():
-            similarity = self.compute_similarity(embedding, db_embedding, method)
-            
+            try:
+                sim = self.compute_similarity(embedding, db_embedding, method)
+                # Convert numpy scalar to plain Python float
+                similarity = float(sim)
+            except Exception:
+                continue
+
             if method == 'cosine':
-                # للتشابه الجيبي، نبحث عن أعلى قيمة
                 if similarity > best_similarity:
                     best_similarity = similarity
                     best_match = user_id
             else:
-                # للمسافة الإقليدية، نبحث عن أقل قيمة
                 if similarity < best_similarity:
                     best_similarity = similarity
                     best_match = user_id
-        
-        # التحقق من العتبة
+
+        # Check threshold
         if method == 'cosine':
-            if best_similarity < self.threshold:
-                return None, best_similarity
+            if best_similarity < float(self.threshold):
+                return None, round(best_similarity, 4)
         else:
-            if best_similarity > self.threshold:
-                return None, best_similarity
-        
-        return best_match, best_similarity
+            if best_similarity > float(self.threshold):
+                return None, round(best_similarity, 4)
+
+        return best_match, round(best_similarity, 4)

@@ -59,9 +59,11 @@ class FaceDetector:
         """
         if self.detection_model == 'simple' or self.detection_model == 'opencv':
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            # تحسين معلمات الكشف: تقليل معامل القياس وتقليل الحد الأدنى للجيران لزيادة الحساسية
             faces = self.detector.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
-            return faces
+            # Convert numpy array to list of plain Python int tuples
+            if len(faces) == 0:
+                return []
+            return [(int(x), int(y), int(w), int(h)) for (x, y, w, h) in faces]
         
         elif self.detection_model == 'dlib':
             # تحويل الصورة إلى تنسيق RGB لـ dlib
@@ -88,6 +90,8 @@ class FaceDetector:
         Returns:
             numpy.ndarray: صورة الوجه المستخرجة والمعدلة الحجم
         """
-        x, y, w, h = face_location
+        x, y, w, h = int(face_location[0]), int(face_location[1]), int(face_location[2]), int(face_location[3])
         face_image = image[y:y+h, x:x+w]
-        return cv2.resize(face_image, target_size)
+        if face_image.size == 0:
+            return cv2.resize(image, (int(target_size[0]), int(target_size[1])))
+        return cv2.resize(face_image, (int(target_size[0]), int(target_size[1])))
