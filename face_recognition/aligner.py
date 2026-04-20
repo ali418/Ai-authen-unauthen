@@ -120,19 +120,20 @@ class FaceAligner:
         eyes_center = ((left_eye_center[0] + right_eye_center[0]) // 2,
                        (left_eye_center[1] + right_eye_center[1]) // 2)
         
-        # إنشاء مصفوفة الدوران
+        # إنشاء مصفوفة الدوران - تحويل لـ int عادي لتجنب خطأ numpy type
+        eyes_center = (int(eyes_center[0]), int(eyes_center[1]))
         M = cv2.getRotationMatrix2D(eyes_center, angle, scale)
-        
+
         # تحديث عنصر الإزاحة في المصفوفة
         tX = face_width * 0.5
         tY = face_width * 0.4
         M[0, 2] += (tX - eyes_center[0])
         M[1, 2] += (tY - eyes_center[1])
-        
-        # تطبيق التحويل الهندسي
-        output = cv2.warpAffine(image, M, (face_width, face_width),
-                                flags=cv2.INTER_CUBIC)
-        
+
+        # تطبيق التحويل الهندسي - face_width يجب أن يكون int
+        fw = int(face_width)
+        output = cv2.warpAffine(image, M, (fw, fw), flags=cv2.INTER_CUBIC)
+
         return output
     
     def _align_face_opencv(self, image, face_width=256, padding=0.25):
@@ -180,7 +181,8 @@ class FaceAligner:
         if face_img.size == 0:
             return image
         
-        # تغيير حجم الصورة إلى الحجم المطلوب
-        aligned_face = cv2.resize(face_img, (face_width, face_width), interpolation=cv2.INTER_CUBIC)
-        
+        # تغيير حجم الصورة إلى الحجم المطلوب - cast لـ int لتجنب خطأ numpy type
+        fw = int(face_width)
+        aligned_face = cv2.resize(face_img, (fw, fw), interpolation=cv2.INTER_CUBIC)
+
         return aligned_face
