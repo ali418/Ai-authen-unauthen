@@ -16,40 +16,37 @@ class FaceAligner:
     """فئة لمحاذاة الوجوه المكتشفة"""
     
     def __init__(self, predictor_path=None):
-        """تهيئة محاذي الوجوه
-        
-        Args:
-            predictor_path (str): مسار ملف نموذج التنبؤ بالنقاط المميزة للوجه
-        """
-        # استخدام dlib للتنبؤ بالنقاط المميزة للوجه
+        """تهيئة محاذي الوجوه"""
+        # Always initialize face_cascade as fallback
+        self.face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        )
+        self.predictor = None
+        self.use_dlib = False
+
         try:
-            predictor_path = predictor_path or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'shape_predictor_68_face_landmarks.dat')
-            
-            # التحقق من وجود الملف
-            if not os.path.exists(predictor_path):
-                print(f"Warning: Predictor file not found at {predictor_path}")
-                print("Download the file from: https://github.com/davisking/dlib-models/raw/master/shape_predictor_68_face_landmarks.dat.bz2")
-                print("Extract it and place it in the project root directory.")
-                self.predictor = None
-                self.use_dlib = False
-            elif not DLIB_AVAILABLE:
+            predictor_path = predictor_path or os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                'shape_predictor_68_face_landmarks.dat'
+            )
+
+            if not DLIB_AVAILABLE:
                 print("dlib is not available. Using OpenCV for face alignment instead.")
-                self.predictor = None
-                self.use_dlib = False
-                # Initialize OpenCV face detector
-                self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+            elif not os.path.exists(predictor_path):
+                print(f"Warning: Predictor file not found at {predictor_path}")
+                print("Using OpenCV for face alignment instead.")
+
             else:
                 self.predictor = dlib.shape_predictor(predictor_path)
-                self.use_dlib = True
-                # Initialize dlib's face detector
                 self.detector = dlib.get_frontal_face_detector()
+                self.use_dlib = True
+
         except Exception as e:
             print(f"Error initializing FaceAligner: {e}")
             print("Using OpenCV for face alignment instead.")
-            self.predictor = None
             self.use_dlib = False
-            # Initialize OpenCV face detector
-            self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
     
     def align_face(self, image, face_width=256, padding=0.25):
         """محاذاة الوجه في الصورة

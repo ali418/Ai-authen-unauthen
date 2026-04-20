@@ -153,50 +153,54 @@ def add_face():
             filename = secure_filename(file.filename)
             unique_filename = f"{generate_unique_id()}_{filename}"
             file_path = os.path.join(FACE_IMAGES_FOLDER, unique_filename)
-            
-            # حفظ الملف
-            file.save(file_path)
-            
+
+            # Read file bytes BEFORE saving (for DB storage)
+            file_bytes = file.read()
+            file.seek(0)
+
+            # حفظ الملف محلياً (اختياري - لن يُحفظ على Cloud بعد الـ redeploy)
             try:
-                # قراءة الصورة
-                image = cv2.imread(file_path)
+                file.save(file_path)
+            except Exception:
+                file_path = None
+
+            try:
+                # قراءة الصورة من الـ bytes مباشرة
+                image_array = np.frombuffer(file_bytes, dtype=np.uint8)
+                image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
                 if image is None:
-                    os.remove(file_path)
                     flash('فشل في قراءة الصورة', 'danger')
                     return redirect(request.url)
-                
+
                 # اكتشاف الوجه
                 faces = face_detector.detect_faces(image)
                 if len(faces) == 0:
-                    os.remove(file_path)
                     flash('لم يتم العثور على وجه في الصورة', 'danger')
                     return redirect(request.url)
-                
+
                 if len(faces) > 1:
-                    os.remove(file_path)
-                    flash('تم العثور على أكثر من وجه في الصورة، يرجى تقديم صورة بوجه واحد فقط', 'danger')
+                    flash('تم العثور على أكثر من وجه، يرجى تقديم صورة بوجه واحد فقط', 'danger')
                     return redirect(request.url)
-                
+
                 # محاذاة الوجه
                 face_aligned = face_aligner.align_face(image)
-                
+
                 # استخراج المتجه المضمن
                 embedding = face_embedder.get_embedding(face_aligned)
-                
-                # حفظ في قاعدة البيانات
-                success, error = db.add_face_image(current_user.id, file_path, embedding)
-                
+
+                # حفظ في قاعدة البيانات مع الصورة كـ binary (ثابت على Cloud)
+                success, error = db.add_face_image(
+                    current_user.id, file_path, embedding,
+                    image_data=file_bytes  # ← مخزون في PostgreSQL
+                )
+
                 if success:
-                    app_logger.info(f"تم إضافة صورة وجه جديدة للمستخدم: {current_user.username}")
                     flash('تم إضافة صورة الوجه بنجاح', 'success')
                 else:
-                    os.remove(file_path)
                     flash(f'فشل في إضافة صورة الوجه: {error}', 'danger')
             except Exception as e:
                 app_logger.error(f"خطأ أثناء معالجة صورة الوجه: {str(e)}")
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                flash(f'حدث خطأ أثناء معالجة الصورة: {str(e)}', 'danger')
+                flash(f'حدث خطأ: {str(e)}', 'danger')
         else:
             flash('نوع الملف غير مدعوم، يرجى استخدام صور بتنسيق JPG أو PNG', 'danger')
         

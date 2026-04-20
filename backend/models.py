@@ -41,15 +41,16 @@ class FaceImage(Base):
     
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    image_path = Column(String(255), nullable=False)
-    embedding = Column(LargeBinary, nullable=True)  # تخزين متجه الوجه المضمن
+    image_path = Column(String(255), nullable=True)   # optional - local path (ephemeral on cloud)
+    image_data = Column(LargeBinary, nullable=True)   # stored directly in DB (persistent)
+    embedding = Column(LargeBinary, nullable=True)    # face embedding vector
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     # العلاقات
     user = relationship('User', back_populates='face_images')
     
     def __repr__(self):
-        return f"<FaceImage(id={self.id}, user_id={self.user_id}, image_path='{self.image_path}')>"
+        return f"<FaceImage(id={self.id}, user_id={self.user_id})>"
 
 class AccessLog(Base):
     """نموذج سجل الوصول"""
