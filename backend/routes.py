@@ -551,8 +551,11 @@ def recognize_frame():
         if len(faces) > 1:
             return jsonify({'success': False, 'error': 'تم اكتشاف أكثر من وجه - تأكد من وجود شخص واحد فقط'})
 
-        # محاذاة الوجه
-        face_aligned = face_aligner.align_face(frame, faces[0])
+        # استخراج منطقة الوجه أولاً (x, y, w, h) ثم المحاذاة
+        face_image = face_detector.extract_face(frame, faces[0])
+
+        # محاذاة الوجه (تمرير الصورة المقصوصة فقط - بدون face location)
+        face_aligned = face_aligner.align_face(face_image)
 
         # استخراج المتجه المضمن
         embedding = face_embedder.get_embedding(face_aligned)
@@ -568,11 +571,15 @@ def recognize_frame():
             embedding, embeddings_dict, method=Config.FACE_SIMILARITY_METHOD
         )
 
-        # حفظ صورة محاولة الوصول
-        timestamp = int(time.time())
-        image_filename = f"access_{timestamp}.jpg"
-        image_path = os.path.join(ACCESS_IMAGES_FOLDER, image_filename)
+        # تأكد إن confidence هو float عادي
+        conf_val = round(float(confidence) * 100) if confidence else 0
+
+        # حفظ الـ timestamp
+        image_path = None
         try:
+            timestamp = int(time.time())
+            image_filename = f"access_{timestamp}.jpg"
+            image_path = os.path.join(ACCESS_IMAGES_FOLDER, image_filename)
             cv2.imwrite(image_path, frame)
         except Exception:
             image_path = None
@@ -581,19 +588,19 @@ def recognize_frame():
             user = db.get_user_by_id(user_id)
             if user:
                 db.log_access_attempt(
-                    user_id=user_id,
+                    user_id=int(user_id),
                     access_granted=True,
-                    confidence=int(confidence * 100),
+                    confidence=conf_val,
                     image_path=image_path,
-                    notes=f"Browser camera - {user.username} - {int(confidence * 100)}%"
+                    notes=f"Browser camera - {user.username} - {conf_val}%"
                 )
-                access_logger.info(f"Browser camera: access granted - {user.username} ({int(confidence * 100)}%)")
+                access_logger.info(f"Browser camera: access granted - {user.username} ({conf_val}%)")
                 return jsonify({
                     'success': True,
                     'access_granted': True,
-                    'user_id': user_id,
+                    'user_id': int(user_id),
                     'username': user.username,
-                    'confidence': int(confidence * 100),
+                    'confidence': conf_val,
                     'message': f'مرحباً {user.username}! تم التعرف عليك بنجاح.'
                 })
 
